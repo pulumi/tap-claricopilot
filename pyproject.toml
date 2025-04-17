@@ -1,0 +1,78 @@
+[project]
+name = "pulumi-tap-claricopilot"
+version = "0.0.1"
+description = "Singer tap for ClariCopilot, built with the Meltano Singer SDK."
+readme = "README.md"
+authors = [{ name = "Pablo Seibelt", email = "pablo@pulumi.com" }]
+keywords = [
+    "ELT",
+    "ClariCopilot",
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+license = "Apache-2.0"
+license-files = [ "LICENSE" ]
+requires-python = ">=3.9"
+dependencies = [
+    "singer-sdk~=0.44.3",
+    "requests~=2.32.3",
+]
+
+[project.optional-dependencies]
+s3 = [
+    "fs-s3fs~=1.1.1",
+]
+
+[project.scripts]
+# CLI declaration
+tap-claricopilot = 'tap_claricopilot.tap:TapClariCopilot.cli'
+
+[dependency-groups]
+dev = [
+    { include-group = "test" },
+]
+test = [
+    "pytest>=8",
+    "singer-sdk[testing]",
+]
+[tool.hatch.build.targets.wheel]
+packages = [
+    "tap_claricopilot",
+]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--durations=10",
+]
+
+[tool.mypy]
+warn_unused_configs = true
+
+[tool.ruff]
+target-version = "py39"
+
+[tool.ruff.lint]
+ignore = [
+    "COM812",  # missing-trailing-comma
+]
+select = ["ALL"]
+
+[tool.ruff.lint.flake8-annotations]
+allow-star-arg-any = true
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[build-system]
+requires = [
+    "hatchling>=1,<2",
+]
+build-backend = "hatchling.build"

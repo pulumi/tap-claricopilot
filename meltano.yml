@@ -1,0 +1,57 @@
+version: 1
+send_anonymous_usage_stats: true
+project_id: "tap-claricopilot"
+default_environment: test
+venv:
+  backend: uv
+environments:
+- name: test
+plugins:
+  extractors:
+  - name: "tap-claricopilot"
+    namespace: "tap_claricopilot"
+    pip_url: -e .
+    capabilities:
+    - state
+    - catalog
+    - discover
+    - about
+    - stream-maps
+
+    settings:
+    - name: api_key
+      label: API Key
+      description: The API key for Clari Copilot (found in workspace settings > integrations)
+      sensitive: true
+
+    - name: api_password
+      kind: password
+      label: API Password
+      description: The API password for Clari Copilot (found in workspace settings > integrations)
+      sensitive: true
+
+    - name: api_url
+      label: API URL
+      description: The URL for the Clari Copilot API
+      value: https://rest-api.copilot.clari.com
+
+    - name: start_date
+      kind: date_iso8601
+      label: Start Date
+      description: Initial date to start extracting data from
+
+    settings_group_validation:
+    - [api_key, api_password]
+
+    config:
+      start_date: '2010-01-01T00:00:00Z'
+      # Enable stream maps to select specific streams for extraction
+      # Without this, all streams might not be selected by default
+      stream_maps:
+        calls: "*"
+        call_details: "*"
+
+  loaders:
+  - name: target-jsonl
+    variant: andyh1203
+    pip_url: target-jsonl
