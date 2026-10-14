@@ -97,9 +97,6 @@ class CallsStream(ClariCopilotStream):
     primary_keys: t.ClassVar[list[str]] = ["id"]
     replication_key = "last_modified_time"
     records_jsonpath = "$.calls[*]"
-    # Linking a call to a CRM account in Clari does not bump last_modified_time,
-    # so always re-pull calls modified within this window.
-    relink_lookback = timedelta(hours=24)
 
     schema = th.PropertiesList(
         th.Property("id", th.StringType, description="Unique call identifier"),
@@ -211,7 +208,8 @@ class CallsStream(ClariCopilotStream):
         if self.replication_key and self.get_starting_timestamp(context):
             start_time = min(
                 self.get_starting_timestamp(context),
-                datetime.now(timezone.utc) - self.relink_lookback,
+                datetime.now(timezone.utc)
+                - timedelta(hours=self.config["relink_lookback_hours"]),
             )
             if start_time:
                 # Format as ISO 8601

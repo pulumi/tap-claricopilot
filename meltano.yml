@@ -40,11 +40,17 @@ plugins:
       label: Start Date
       description: Initial date to start extracting data from
 
+    - name: relink_lookback_hours
+      kind: integer
+      label: Relink Lookback Hours
+      description: Always re-pull calls modified within this many hours (Clari does not bump last_modified_time on CRM re-links)
+
     settings_group_validation:
     - [api_key, api_password]
 
     config:
       start_date: '2010-01-01T00:00:00Z'
+      relink_lookback_hours: 72
       # Enable stream maps to select specific streams for extraction
       # Without this, all streams might not be selected by default
       stream_maps:

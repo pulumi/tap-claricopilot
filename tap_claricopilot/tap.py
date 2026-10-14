@@ -45,6 +45,15 @@ class TapClariCopilot(Tap):
             description="The url for the API service",
         ),
         th.Property(
+            "relink_lookback_hours",
+            th.IntegerType(nullable=False),
+            required=True,
+            description=(
+                "Always re-pull calls modified within this many hours. Clari does not "
+                "bump last_modified_time when a call is linked to a CRM account."
+            ),
+        ),
+        th.Property(
             "user_agent",
             th.StringType(nullable=True),
             description=(
