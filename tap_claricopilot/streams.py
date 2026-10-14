@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import typing as t
 import decimal
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from importlib import resources
 from urllib.parse import urljoin
 
@@ -206,7 +206,11 @@ class CallsStream(ClariCopilotStream):
 
         # Add filterModifiedGt parameter if we have a state bookmark
         if self.replication_key and self.get_starting_timestamp(context):
-            start_time = self.get_starting_timestamp(context)
+            start_time = min(
+                self.get_starting_timestamp(context),
+                datetime.now(timezone.utc)
+                - timedelta(hours=self.config["relink_lookback_hours"]),
+            )
             if start_time:
                 # Format as ISO 8601
                 params["filterModifiedGt"] = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
