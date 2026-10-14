@@ -1,27 +1,23 @@
-"""The calls stream re-pulls recent calls by call time and skips ids already yielded."""
+"""filterModifiedGt uses the earlier of the bookmark and now - 24h."""
 
-from unittest.mock import patch
-
-from singer_sdk.streams import RESTStream
+from datetime import datetime, timedelta, timezone
 
 from tap_claricopilot.tap import TapClariCopilot
 
 
-def test_lookback_pass_dedupes_and_filters_by_call_time():
+def _since(bookmark):
     tap = TapClariCopilot(config={"api_key": "k", "api_password": "p", "start_date": "2026-01-01T00:00:00Z"})
     calls = tap.streams["calls"]
-    seen_params = []
+    calls.get_starting_timestamp = lambda context: bookmark
+    raw = calls.get_url_params(None, None)["filterModifiedGt"]
+    return datetime.strptime(raw, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
 
-    def fake(self, context):
-        seen_params.append(self.get_url_params(context, None))
-        if self._lookback_pass:
-            return iter([{"id": "a"}, {"id": "relinked"}])
-        return iter([{"id": "a"}, {"id": "b"}])
 
-    with patch.object(RESTStream, "request_records", fake):
-        ids = [r["id"] for r in calls.request_records(None)]
+def test_recent_bookmark_rewinds_24h():
+    now = datetime.now(timezone.utc)
+    assert abs(_since(now - timedelta(minutes=15)) - (now - timedelta(hours=24))) < timedelta(minutes=1)
 
-    assert ids == ["a", "b", "relinked"]
-    assert "filterTimeGt" not in seen_params[0]
-    assert "filterTimeGt" in seen_params[1] and "filterModifiedGt" not in seen_params[1]
-    assert calls._lookback_pass is False
+
+def test_old_bookmark_wins():
+    old = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    assert _since(old) == old
