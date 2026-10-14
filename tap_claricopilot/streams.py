@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import typing as t
 import decimal
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from importlib import resources
 from urllib.parse import urljoin
 
@@ -97,6 +97,10 @@ class CallsStream(ClariCopilotStream):
     primary_keys: t.ClassVar[list[str]] = ["id"]
     replication_key = "last_modified_time"
     records_jsonpath = "$.calls[*]"
+    # Linking a call to a CRM account in Clari does not bump last_modified_time,
+    # so a second pass re-pulls calls from this window by call time.
+    relink_lookback = timedelta(hours=24)
+    _lookback_pass = False
 
     schema = th.PropertiesList(
         th.Property("id", th.StringType, description="Unique call identifier"),
@@ -204,8 +208,11 @@ class CallsStream(ClariCopilotStream):
         if next_page_token:
             params["skip"] = next_page_token
 
+        if self._lookback_pass:
+            since = datetime.now(timezone.utc) - self.relink_lookback
+            params["filterTimeGt"] = since.strftime("%Y-%m-%dT%H:%M:%SZ")
         # Add filterModifiedGt parameter if we have a state bookmark
-        if self.replication_key and self.get_starting_timestamp(context):
+        elif self.replication_key and self.get_starting_timestamp(context):
             start_time = self.get_starting_timestamp(context)
             if start_time:
                 # Format as ISO 8601
@@ -213,6 +220,21 @@ class CallsStream(ClariCopilotStream):
 
         return params
     
+    def request_records(self, context: Context | None) -> t.Iterable[dict]:
+        """Yield modified calls, then recent calls not already yielded."""
+        seen = set()
+        self._lookback_pass = False
+        for record in super().request_records(context):
+            seen.add(record["id"])
+            yield record
+        self._lookback_pass = True
+        try:
+            for record in super().request_records(context):
+                if record["id"] not in seen:
+                    yield record
+        finally:
+            self._lookback_pass = False
+
     def get_child_context(self, record: dict, context: t.Optional[Context]) -> dict:
         """Return a context dictionary for child streams.
 
